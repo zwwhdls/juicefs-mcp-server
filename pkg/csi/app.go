@@ -76,6 +76,7 @@ func (c *CSIHandler) handleGetPod(ctx context.Context, request mcp.CallToolReque
 	}
 
 	res, _ := json.Marshal(podSts)
+	c.log.Debugw("get pod", "pod", podSts)
 	return mcp.NewToolResultText(fmt.Sprintf("%+v", string(res))), nil
 }
 

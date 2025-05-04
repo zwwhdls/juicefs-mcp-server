@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"strings"
 
 	"github.com/mark3labs/mcp-go/mcp"
 	corev1 "k8s.io/api/core/v1"
@@ -91,8 +90,6 @@ func (c *CSIHandler) handleGetNode(ctx context.Context, request mcp.CallToolRequ
 	return mcp.NewToolResultText(fmt.Sprintf("%+v", string(res))), nil
 }
 
-// mount pod is important, return its detail
-// maybe it can be optimized to return less
 func (c *CSIHandler) handleGetMountPodByPV(ctx context.Context, request mcp.CallToolRequest) (*mcp.CallToolResult, error) {
 	c.log.Debugw("handleGetMountPodByPV", "argument", request.Params.Arguments)
 	pvName, ok := request.Params.Arguments["pvName"].(string)
@@ -131,12 +128,26 @@ func (c *CSIHandler) handleGetMountPodByPV(ctx context.Context, request mcp.Call
 	}
 
 	mountPodNames := make([]string, 0)
+	mountPodSts := []PodWithStatus{}
 	for _, pod := range mountPodsList {
 		mountPodNames = append(mountPodNames, pod.Name)
+		mountPodSts = append(mountPodSts, PodWithStatus{
+			Name:      pod.Name,
+			Namespace: pod.Namespace,
+			Kind:      "Pod",
+			NodeName:  pod.Spec.NodeName,
+			Status: PodStatus{
+				Phase:             pod.Status.Phase,
+				Conditions:        pod.Status.Conditions,
+				Message:           pod.Status.Message,
+				Reason:            pod.Status.Reason,
+				ContainerStatuses: pod.Status.ContainerStatuses,
+			},
+		})
 	}
 
-	c.log.Debugw("get mount pod", "uniqueId", uniqueId, "mountPodNames", strings.Join(mountPodNames, ","))
-	res, _ := json.Marshal(mountPodsList)
+	res, _ := json.Marshal(mountPodSts)
+	c.log.Debugw("get mount pod", "uniqueId", uniqueId, "mountPods", mountPodSts)
 	return mcp.NewToolResultText(fmt.Sprintf("%+v", string(res))), nil
 }
 
